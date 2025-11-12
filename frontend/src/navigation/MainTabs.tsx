@@ -1,12 +1,15 @@
+
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Home, Mic, User } from 'lucide-react-native';
 import FeedScreen from '../screens/Main/FeedScreen';
-import MyRecordsScreen  from '../screens/Main/MyRecordsScreen';
+import MyRecordsScreen from '../screens/Main/MyRecordsScreen';
 import RecordScreen from '@/screens/Main/RecordScreen';
 import CreatePostScreen from '../screens/Main/CreatePostScreen';
 import ProfileScreen from '../screens/Main/ProfileScreen';
 import PendingBoxScreen from '../screens/Main/PendingBoxScreen';
+import VerifyResetOtpScreen from '../screens/Auth/VerifyResetOtpScreen';
+import ResetPasswordScreen from '../screens/Auth/ResetPasswordScreen';
 import { View, StyleSheet } from 'react-native';
 
 export type MainTabParamList = {
@@ -23,7 +26,9 @@ export type RecordStackParamList = {
 export type ProfileStackParamList = {
   ProfileMain: undefined;
   PendingBox: undefined;
-   MyRecords: undefined;
+  MyRecords: undefined;
+  VerifyResetOtp: { email: string };
+  ResetPassword: { email: string; otp?: string };
 };
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -44,7 +49,10 @@ function ProfileStackScreen() {
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
       <ProfileStack.Screen name="PendingBox" component={PendingBoxScreen} />
-      <ProfileStack.Screen name="MyRecords" component={MyRecordsScreen}/>
+      <ProfileStack.Screen name="MyRecords" component={MyRecordsScreen} />
+     
+      <ProfileStack.Screen name="VerifyResetOtp" component={VerifyResetOtpScreen} />
+      <ProfileStack.Screen name="ResetPassword" component={ResetPasswordScreen} />
     </ProfileStack.Navigator>
   );
 }
@@ -64,9 +72,7 @@ export default function MainTabs() {
         name="Feed"
         component={FeedScreen}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <Home color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
         }}
       />
       <Tab.Screen
@@ -84,9 +90,7 @@ export default function MainTabs() {
         name="Profile"
         component={ProfileStackScreen}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <User color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
         }}
       />
     </Tab.Navigator>

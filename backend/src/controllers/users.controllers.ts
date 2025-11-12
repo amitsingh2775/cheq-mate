@@ -1,4 +1,4 @@
-// src/controllers/auth.controller.ts
+
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -9,7 +9,8 @@ import redisClient from '../config/redisClient.js';
 import { generateRandomUsername } from '../utils/generateUsername.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+
+const JWT_SECRET = process.env.JWT_SECRET || "" 
 const OTP_TTL_SECONDS = 10 * 60; 
 
 
@@ -60,7 +61,7 @@ export const signup = async (req: Request, res: Response) => {
 
     // Send OTP email
     try {
-      await sendEmail(email, 'Verify your EchoBox account', `Your OTP is ${otp}. It is valid for 10 minutes.`);
+      await sendEmail(email, 'Verify your Cheq-mate account', `Your OTP is ${otp}. It is valid for 10 minutes.`);
     } catch (emailErr) {
       // optional: delete key if email fails (safer) — here we rollback to avoid stale redis entries
       console.error('Failed to send OTP email:', emailErr);
@@ -257,7 +258,7 @@ export const getMyProfile = async (req: AuthenticatedRequest, res: Response) => 
 
     // Try sending email FIRST. If email fails, don't overwrite existing OTP.
     try {
-      await sendEmail(email, 'Verify your EchoBox account', `Your OTP is ${newOtp}. It is valid for 10 minutes.`);
+      await sendEmail(email, 'Verify your Cheq-mate account', `Your OTP is ${newOtp}. It is valid for 10 minutes.`);
     } catch (emailErr) {
       console.error('Failed to send OTP email (resend):', emailErr);
       return res.status(500).json({ error: 'Failed to send OTP email. Please try again later.' });
@@ -275,5 +276,127 @@ export const getMyProfile = async (req: AuthenticatedRequest, res: Response) => 
   } catch (error: any) {
     console.error('Resend OTP Error:', error);
     return res.status(500).json({ error: 'Server error during OTP resend.' });
+  }
+};
+
+
+// forget or reset password started from here
+
+export const requestResetPassword=async(req:Request,res:Response)=>{
+  
+  const {email}=req.body
+  if( !email ){
+     return res.status(400).json({error:"please provide email"})
+  }
+
+ try {
+   // find user from db
+   const user=await User.findOne({email})
+ 
+   if(!user) return res.status(404).json({error:"Account doesn't exist"})
+   
+ 
+   const key=`passreset:${email}`;
+    const otp = otpGenerator.generate(6, {
+       upperCaseAlphabets: false,
+       specialChars: false,
+       lowerCaseAlphabets: false,
+       digits: true,
+     });
+ 
+     // create the payload to store in redis
+     const payload={
+       email,
+       otp,
+       createdAt:Date.now(),
+     }
+ 
+     // send email to user
+     try {
+        await sendEmail(email,'password reset on your account',`your reset password otp is ${otp}.It is valid for ${Math.floor(OTP_TTL_SECONDS / 60)} minutes`)
+     } catch (error) {
+        return res.status(500).json({error:"email sending failed"})
+     }
+ 
+     // save payload in redis
+     await redisClient.setEx(key,OTP_TTL_SECONDS,JSON.stringify(payload))
+ 
+     return res.status(200).json({message:"otp sended succesfully",email})
+ } catch (error) {
+    return res.status(500).json({error:"request failed"})
+ }
+
+}
+
+// verify reset otp
+
+export const verifyResetOtp=async(req:Request,res:Response)=>{
+    
+  try {
+     const {email,otp}=req.body
+     if(!email || !otp) return res.status(400).json({error:"email and otp is required"});
+
+     // key
+     const key=`passreset:${email}`;
+     const data=await redisClient.get(key);
+     if(!data){
+       return res.status(400).json({error:"otp expired or invaild , make a new otp request"})
+
+     }
+     let parsed: { email: string; otp: string; createdAt?: number; [k: string]: any };
+    try {
+      parsed = JSON.parse(data);
+    } catch (e) {
+      await redisClient.del(key);
+      return res.status(400).json({ error: 'Invalid OTP data. Please request a new OTP.' });
+    }
+
+    if (String(parsed.otp) !== String(otp)) {
+      return res.status(400).json({ error: 'Invalid OTP.' });
+    }
+    return res.status(200).json({message:"otp verified process to new reset password",verified:true})
+  } catch (error) {
+     return res.status(500).json({error:"request faild to verify otp"})
+  }
+}
+
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { email, newPassword, confirmPassword } = req.body;
+
+    if (!email || !newPassword || !confirmPassword) {
+      return res
+        .status(400)
+        .json({ error: 'Please provide email, newPassword and confirmPassword.' });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'Passwords do not match.' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+    }
+
+    // Check if user exists
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
+      return res.status(404).json({ error: 'No account found with this email.' });
+    }
+
+    // Hash new password
+    const hashed = await bcrypt.hash(newPassword, 10);
+    user.password = hashed;
+    await user.save();
+
+    // Cleanup Redis (optional)
+    await redisClient.del(`pwdreset:${email}`);
+
+    return res
+      .status(200)
+      .json({ message: 'Password changed successfully.', verified: true });
+  } catch (error: any) {
+    console.error('Reset Password Error:', error);
+    return res.status(500).json({ error: 'Server error resetting password.' });
   }
 };

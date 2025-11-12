@@ -1,79 +1,57 @@
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   FlatList,
-  TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
+  StyleSheet,
+  RefreshControl,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { ArrowLeft, Play } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import { echoApi, Echo } from '../../api/api';
-import { formatTimeRemaining } from '../../utils/time';
+import EchoItem from '../../components/EchoItem';
 
 export default function PendingBoxScreen() {
   const navigation = useNavigation();
   const [echos, setEchos] = useState<Echo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchPending = async () => {
+ 
+  const fetchPendingEchos = async () => {
     try {
-      const { data } = await echoApi.getPending();
+      setLoading(true);
+      const res = await echoApi.getPending();
+      const data = res.data.results ?? res.data;
       setEchos(data);
     } catch (error) {
-      console.error('Pending fetch error:', error);
+      console.error('Failed to fetch pending echos:', error);
+      Alert.alert('Error', 'Unable to load pending echos.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchPending();
+    fetchPendingEchos();
   }, []);
 
-  const handleTriggerGoLive = async (echoId: string) => {
-    try {
-      await echoApi.triggerGoLive(echoId);
-      Alert.alert('Success', 'Your echo is now live!');
-      fetchPending();
-    } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.error || 'Could not trigger go live');
-    }
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchPendingEchos();
   };
 
-  const renderItem = ({ item }: { item: Echo }) => {
-    const timeRemaining = formatTimeRemaining(item.goLiveAt);
-    const canGoLive = new Date(item.goLiveAt) <= new Date();
+  const handleDeleteLocal = (id: string) => {
+    setEchos(prev => prev.filter(e => String(e._id) !== String(id)));
+  };
 
-    return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={styles.iconCircle}>
-            <Text style={styles.iconText}>🎵</Text>
-          </View>
-
-          <View style={styles.cardInfo}>
-            <Text style={styles.caption} numberOfLines={2}>
-              {item.caption || 'No caption'}
-            </Text>
-            <Text style={styles.status}>
-              {item.isPublic ? 'Public' : 'Private'} • {timeRemaining}
-            </Text>
-          </View>
-        </View>
-
-        {canGoLive && (
-          <TouchableOpacity
-            style={styles.goLiveButton}
-            onPress={() => handleTriggerGoLive(item._id)}
-          >
-            <Play size={16} color="#000" />
-            <Text style={styles.goLiveText}>Go Live Now</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+  const handleUpdateLocal = (updated: Echo) => {
+    setEchos(prev =>
+      prev.map(e => (String(e._id) === String(updated._id) ? updated : e))
     );
   };
 
@@ -88,7 +66,6 @@ export default function PendingBoxScreen() {
   return (
     <View style={styles.container}>
 
-      {/* ✅ Proper Back Button (Better Touch Area + Centered Header) */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <ArrowLeft size={26} color="#000" />
@@ -102,11 +79,19 @@ export default function PendingBoxScreen() {
       <FlatList
         data={echos}
         keyExtractor={(item) => item._id}
-        renderItem={renderItem}
+        renderItem={({ item }) => (
+          <EchoItem
+            echo={item}
+            onDelete={handleDeleteLocal}
+            onUpdate={handleUpdateLocal}
+            showPendingStatus
+          />
+        )}
         contentContainerStyle={styles.list}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>No pending echos</Text>
+            <Text style={styles.emptyText}>No pending echos found.</Text>
           </View>
         }
       />
@@ -115,18 +100,10 @@ export default function PendingBoxScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
 
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  // ✅ Better Header UI
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -138,83 +115,13 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
   },
 
-  backBtn: {
-    padding: 4,
-  },
+  backBtn: { padding: 4 },
 
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#000',
-  },
+  title: { fontSize: 20, fontWeight: '700', color: '#000' },
 
-  list: {
-    padding: 16,
-  },
+  list: { paddingHorizontal: 16, paddingTop: 10 },
 
-  card: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-  },
+  empty: { alignItems: 'center', marginTop: 80 },
 
-  cardHeader: {
-    flexDirection: 'row',
-    marginBottom: 12,
-  },
-
-  iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FFD60A',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-
-  iconText: {
-    fontSize: 24,
-  },
-
-  cardInfo: {
-    flex: 1,
-  },
-
-  caption: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-
-  status: {
-    fontSize: 14,
-    color: '#666',
-  },
-
-  goLiveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#FFD60A',
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-
-  goLiveText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
-  empty: {
-    alignItems: 'center',
-    marginTop: 100,
-  },
-
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-  },
+  emptyText: { fontSize: 16, color: '#666' },
 });

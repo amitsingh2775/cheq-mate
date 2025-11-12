@@ -20,7 +20,7 @@ export default function MyRecordsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // ✅ Fetch user's own echos
+  //  Fetch user's own echos
   const fetchMyEchos = async () => {
     try {
       setLoading(true);
@@ -65,7 +65,7 @@ export default function MyRecordsScreen() {
   return (
     <View style={styles.container}>
 
-      {/* ✅ Header with Back Button */}
+    
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <ArrowLeft size={26} color="#000" />
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
 
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  // ✅ Clean top header
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -15,6 +15,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { AuthStackParamList } from '../../navigation/AuthStack';
 import { authApi } from '../../api/api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { navigateToNested } from '@/navigation/RootNavigation';
 
 type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -36,6 +37,7 @@ export default function LoginScreen() {
       const { data } = await authApi.login({ email, password });
       await setToken(data.token);
       setUser(data.user);
+      navigateToNested('Main', 'Feed');
     } catch (error: any) {
       Alert.alert('Login Failed', error.response?.data?.error || 'Something went wrong');
     } finally {

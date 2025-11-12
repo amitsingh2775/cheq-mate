@@ -23,11 +23,11 @@ export default function VerifyOtpScreen() {
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // New states for resend
-  const [resendLoading, setResendLoading] = useState(false);
-  const [resendTimer, setResendTimer] = useState(0); // seconds remaining
 
-  // Start a countdown effect when resendTimer > 0
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0); 
+
+  
   useEffect(() => {
     if (resendTimer <= 0) return;
     const t = setInterval(() => {
@@ -53,7 +53,7 @@ export default function VerifyOtpScreen() {
       const { data } = await authApi.verifyOtp({ email: route.params.email, otp });
       await setToken(data.token);
       setUser(data.user);
-      // optionally navigate to app home here if you use navigation
+     
     } catch (error: any) {
       Alert.alert('Verification Failed', error.response?.data?.error || 'Invalid OTP');
     } finally {
@@ -62,13 +62,13 @@ export default function VerifyOtpScreen() {
   };
 
   const handleResend = async () => {
-    // If timer running, do nothing (button disabled in UI anyway)
+   
     if (resendTimer > 0 || resendLoading) return;
 
     setResendLoading(true);
     try {
       await authApi.resendOtp({ email: route.params.email });
-      // On success, start timer (e.g., 60 seconds)
+   
       setResendTimer(60);
       Alert.alert('OTP Sent', `A new OTP has been sent to ${route.params.email}`);
     } catch (error: any) {
@@ -78,7 +78,7 @@ export default function VerifyOtpScreen() {
     }
   };
 
-  // Helper to format timer like mm:ss or just seconds
+ 
   const formatTimer = (s: number) => {
     const mm = Math.floor(s / 60);
     const ss = s % 60;

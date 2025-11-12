@@ -1,3 +1,4 @@
+// src/screens/Main/CreatePostScreen.tsx
 import { useState } from 'react';
 import {
   View,
@@ -25,6 +26,7 @@ export default function CreatePostScreen() {
   const navigation = useNavigation<CreatePostScreenNavigationProp>();
   const [caption, setCaption] = useState('');
   const [isPublic, setIsPublic] = useState(true);
+  const [goLiveLater, setGoLiveLater] = useState(true); 
   const [loading, setLoading] = useState(false);
 
   const handlePost = async () => {
@@ -43,11 +45,13 @@ export default function CreatePostScreen() {
       formData.append('isPublic', isPublic ? 'true' : 'false');
       formData.append('caption', caption);
 
+      formData.append('goLiveLater', goLiveLater ? 'true' : 'false');
+
       await echoApi.createEcho(formData);
 
       Alert.alert(
         'Success',
-        '',
+        goLiveLater ? 'Your echo is scheduled and will go live after 24 hours.' : 'Your echo is live now!',
         [{ text: 'OK', onPress: () => navigation.navigate('RecordMain') }]
       );
     } catch (error: any) {
@@ -95,8 +99,27 @@ export default function CreatePostScreen() {
           />
         </View>
 
+        <View style={styles.option}>
+          <View>
+            <Text style={styles.optionLabel}>Go live after 24 hours</Text>
+            <Text style={styles.optionSubtext}>
+              {goLiveLater ? 'Will appear in feed after 24 hours' : 'Will go live instantly'}
+            </Text>
+          </View>
+          <Switch
+            value={goLiveLater}
+            onValueChange={setGoLiveLater}
+            trackColor={{ false: '#ccc', true: '#FFD60A' }}
+            thumbColor="#fff"
+          />
+        </View>
+
         <View style={styles.info}>
-          <Text style={styles.infoText}>⏰ Your echo will go live in 24 hours</Text>
+          <Text style={styles.infoText}>
+            {goLiveLater
+              ? '⏰ This echo will be scheduled and visible after 24 hours.'
+              : '⚡ This echo will be visible immediately.'}
+          </Text>
         </View>
 
         <TouchableOpacity
@@ -155,7 +178,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     backgroundColor: '#f5f5f5',
     borderRadius: 12,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   optionLabel: {
     fontSize: 16,

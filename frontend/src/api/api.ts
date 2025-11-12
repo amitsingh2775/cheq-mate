@@ -41,7 +41,7 @@ export interface User {
   createdAt?: string;
 }
 
-/** Creator may be null coming from server — mark optional/nullable */
+
 export interface Echo {
   _id: string;
   creator?: {
@@ -78,7 +78,16 @@ export const authApi = {
 
 
   resendOtp:(data: { email: string })=>
-      api.post<{email: string}>('/api/v1/users/resend-otp',data)
+      api.post<{email: string}>('/api/v1/users/resend-otp',data),
+
+  requestResetPassword:(data:{email:string})=>
+            api.post<{email:string}>('/api/v1/users/request-reset-pass',data),
+
+  verifyresetPassOtp:(data:{email:string,otp:string})=>
+           api.post<{message:string,verified:boolean}>('/api/v1/users/verify-reset-otp',data),
+
+  resetPassword:(data:{email:string,newPassword:string,confirmPassword:string})=>
+           api.post<{message:string,verified:boolean}>('/api/v1/users/reset-password',data)
 };
 
 export const echoApi = {
@@ -97,8 +106,12 @@ export const echoApi = {
       params: { page, limit },
     }),
 
-  getPending: () =>
-    api.get<Echo[]>('/api/v1/echos/pending'),
+  getPending: (page = 1, limit = 50) =>
+  api.get<{ results: Echo[]; page?: number; limit?: number }>(
+    '/api/v1/echos/pending',
+    { params: { page, limit } }
+  ),
+
 
   triggerGoLive: (echoId: string) =>
     api.post(`/api/v1/echos/${echoId}/golive`),

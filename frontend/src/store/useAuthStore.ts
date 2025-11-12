@@ -32,17 +32,21 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   checkAuth: async () => {
-    try {
-      const token = await AsyncStorage.getItem('token');
-      if (token) {
-        const { data } = await authApi.getProfile();
-        set({ token, user: data, isLoading: false });
-      } else {
-        set({ isLoading: false });
-      }
-    } catch (error) {
-      await AsyncStorage.removeItem('token');
-      set({ token: null, user: null, isLoading: false });
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (token) {
+      const { data } = await authApi.getProfile();
+      set({ token, user: data, isLoading: false });
+    } else {
+      set({ isLoading: false });
     }
-  },
+  } catch (error: any) {
+    if (error.response?.status !== 401) {
+      console.log('Auth check error:', error);
+    }
+    await AsyncStorage.removeItem('token');
+    set({ token: null, user: null, isLoading: false });
+  }
+},
+
 }));

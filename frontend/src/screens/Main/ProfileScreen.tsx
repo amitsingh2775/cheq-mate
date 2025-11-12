@@ -1,4 +1,3 @@
-// src/screens/ProfileScreen.tsx
 import { useState } from 'react';
 import {
   View,
@@ -13,7 +12,9 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { ProfileStackParamList } from '../../navigation/MainTabs';
 import { useAuthStore } from '../../store/useAuthStore';
-import { Clock, LogOut, Library } from 'lucide-react-native';   // ✅ ADDED Library icon
+import { Clock, LogOut, Library } from 'lucide-react-native';
+import { authApi } from '../../api/api';
+
 
 type ProfileScreenNavigationProp = StackNavigationProp<
   ProfileStackParamList,
@@ -30,6 +31,37 @@ export default function ProfileScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Logout', style: 'destructive', onPress: logout },
     ]);
+  };
+
+  const handleForgotPassword = async () => {
+    if (!user?.email) {
+      Alert.alert('Error', 'No email found for this account.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await authApi.requestResetPassword({ email: user.email });
+
+      Alert.alert(
+        'OTP Sent',
+        `A reset OTP has been sent to ${user.email}`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+             
+              navigation.navigate('VerifyResetOtp', { email: user.email });
+
+            },
+          },
+        ]
+      );
+    } catch (err: any) {
+      Alert.alert('Error', err?.response?.data?.error || 'Failed to send OTP. Try again later.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -55,9 +87,21 @@ export default function ProfileScreen() {
           </View>
           <Text style={styles.username}>{user?.username}</Text>
           <Text style={styles.email}>{user?.email}</Text>
+
+          <TouchableOpacity
+            style={styles.resetButton}
+            onPress={handleForgotPassword}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator />
+            ) : (
+              <Text style={styles.resetButtonText}>Forgot / Reset Password</Text>
+            )}
+          </TouchableOpacity>
         </View>
 
-        {/* ✅ Pending Box */}
+        {/* Pending Box */}
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => navigation.navigate('PendingBox')}
@@ -71,13 +115,13 @@ export default function ProfileScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* ✅ My Records (Updated Icon Here) */}
+        {/* My Records */}
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => navigation.navigate('MyRecords')}
         >
           <View style={styles.menuIcon}>
-            <Library size={24} color="#000" />   {/* ✅ NEW ICON */}
+            <Library size={24} color="#000" />
           </View>
           <View style={styles.menuContent}>
             <Text style={styles.menuLabel}>My Records</Text>
@@ -107,7 +151,7 @@ const styles = StyleSheet.create({
   content: { flex: 1, padding: 20 },
   profileCard: {
     alignItems: 'center',
-    padding: 32,
+    padding: 24,
     backgroundColor: '#f5f5f5',
     borderRadius: 16,
     marginBottom: 24,
@@ -125,7 +169,16 @@ const styles = StyleSheet.create({
   avatarImage: { width: 80, height: 80, borderRadius: 40 },
   avatarText: { fontSize: 32, fontWeight: 'bold' },
   username: { fontSize: 24, fontWeight: 'bold', marginBottom: 4 },
-  email: { fontSize: 14, color: '#666' },
+  email: { fontSize: 14, color: '#666', marginBottom: 12 },
+  resetButton: {
+    marginTop: 6,
+    backgroundColor: '#FFD60A',
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 10,
+  },
+  resetButtonText: { fontSize: 14, fontWeight: '600' },
+
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',

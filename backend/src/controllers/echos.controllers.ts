@@ -14,7 +14,7 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 }
 
 export const createEcho = async (req: AuthenticatedRequest, res: Response) => {
-  const { isPublic, caption } = req.body;
+  const { isPublic, caption, goLiveLater } = req.body;
   const audioFile = req.file;
   const userId = req.user!.id;
 
@@ -30,58 +30,49 @@ export const createEcho = async (req: AuthenticatedRequest, res: Response) => {
     filePath = path.join(UPLOAD_DIR, uniqueFilename);
     const fileRelativePath = `/uploads/audio/${uniqueFilename}`;
 
-    // Save file locally
     await fs.promises.writeFile(filePath, audioFile.buffer);
-    console.log(`Audio file saved locally to: ${filePath}`);
 
-    // Immediate go-live
-    const goLiveAt = new Date();
+    const now = new Date();
+    const goLiveAt =
+      goLiveLater === 'true'
+        ? new Date(now.getTime() + 24 * 60 * 60 * 1000)
+        : now;
+    const status = goLiveLater === 'true' ? 'pending' : 'live';
 
-    // Create DB document with immediate live status
     const newEcho = new Echo({
       creator: userId,
       audioUrl: fileRelativePath,
       caption: caption || null,
-      isPublic: (isPublic === 'true' || isPublic === true),
-      status: 'live',
+      isPublic: isPublic === 'true' || isPublic === true,
+      status,
       goLiveAt,
     });
 
     const savedEcho = await newEcho.save();
-
-    // Populate creator fields
     const populatedEcho = await savedEcho.populate({
       path: 'creator',
-      select: 'username uid profilePhotoUrl'
+      select: 'username uid profilePhotoUrl',
     });
 
-    // Broadcast via Socket.IO for public echos
-    if (populatedEcho.isPublic) {
-      const echoObj = populatedEcho.toObject ? populatedEcho.toObject() : populatedEcho;
-      io.emit('new_echo_live', echoObj);
-      console.log(`Broadcasted new live echo: ${echoObj._id}`);
+    // Broadcast only if live now
+    if (populatedEcho.status === 'live' && populatedEcho.isPublic) {
+      io.emit('new_echo_live', populatedEcho);
+      console.log(`Broadcasted new live echo: ${populatedEcho._id}`);
     } else {
-      console.log(`Private echo created (not broadcast): ${populatedEcho._id}`);
+      console.log(
+        `Pending echo created: ${populatedEcho._id} (will go live later)`
+      );
     }
 
     return res.status(201).json(populatedEcho);
   } catch (error: any) {
     console.error('Create Echo Error:', error);
-
-    // Cleanup file if something failed after saving
     if (filePath && fs.existsSync(filePath)) {
-      try {
-        await fs.promises.unlink(filePath);
-        console.log(`Cleaned up failed upload file: ${filePath}`);
-      } catch (cleanupError) {
-        console.error(`Error cleaning up file ${filePath}:`, cleanupError);
-      }
+      await fs.promises.unlink(filePath);
     }
-
     return res.status(500).json({ error: 'Server error creating echo.' });
   }
 };
-
 export const getFeed = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const now = new Date();
@@ -112,22 +103,41 @@ export const getFeed = async (req: AuthenticatedRequest, res: Response) => {
 
 export const getPendingEchos = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const now = new Date();
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ error: 'Unauthorized: User not found.' });
+    }
+
+    
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const skip = (page - 1) * limit;
+
     const echos = await Echo.find({
-      creator: req.user!.id,
-      isPublic:false,
-      goLiveAt: { $gt: now }
+      creator: req.user.id,
+      status: 'pending',
     })
       .populate({
         path: 'creator',
-        select: 'username uid profilePhotoUrl'
+        select: 'username uid profilePhotoUrl',
       })
-      .sort({ createdAt: -1 }); 
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    return res.json(echos);
-  } catch (error: any) {
+    const total = await Echo.countDocuments({
+      creator: req.user.id,
+      status: 'pending',
+    });
+
+    return res.status(200).json({
+      results: echos,
+      page,
+      limit,
+      total,
+    });
+  } catch (error) {
     console.error('Get Pending Echos Error:', error);
-    return res.status(500).json({ error: 'Server error fetching pending echos.' });
+    return res.status(500).json({ error: 'Server error while fetching pending echos.' });
   }
 };
 
@@ -265,17 +275,31 @@ export const getMyEchos = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.id;
 
+    
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const skip = (page - 1) * limit;
+
+    const total = await Echo.countDocuments({ creator: userId });
+
     const myEchos = await Echo.find({ creator: userId })
       .populate({
         path: "creator",
         select: "username uid profilePhotoUrl",
       })
-      .sort({ createdAt: -1 }); // latest first
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    return res.status(200).json({ results: myEchos });
+    return res.status(200).json({
+      results: myEchos,
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    });
   } catch (error: any) {
     console.error("Get My Echos Error:", error);
     return res.status(500).json({ error: "Server error fetching your echos." });
   }
 };
-

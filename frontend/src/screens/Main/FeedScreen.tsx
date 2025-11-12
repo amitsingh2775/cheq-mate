@@ -10,8 +10,8 @@ import {
 import { io, Socket } from 'socket.io-client';
 import { BASE_URL, echoApi, Echo } from '../../api/api';
 import EchoItem from '../../components/EchoItem';
+import { useAuthStore } from '../../store/useAuthStore'; 
 
-/** Fallback creator used when server sends creator = null */
 function ensureCreator(e: Echo): Echo {
   if (e.creator) return e;
   return {
@@ -30,15 +30,16 @@ export default function FeedScreen() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const socketRef = useRef<Socket | null>(null);
   const pageRef = useRef<number>(1);
+  const { token, isLoading } = useAuthStore(); // get token state
   const limit = 20;
 
   const fetchFeed = async (page = 1) => {
     try {
+      if (!token) return; // don’t fetch without token
       if (page === 1) setLoading(true);
-      const res = await echoApi.getFeed(page, limit);
-      const results: Echo[] = (res.data?.results) ?? [];
-      if (!Array.isArray(results)) throw new Error('Invalid feed response');
 
+      const res = await echoApi.getFeed(page, limit);
+      const results: Echo[] = res.data?.results ?? [];
       const normalized = results.map(r => ensureCreator(r));
 
       if (page === 1) {
@@ -46,7 +47,9 @@ export default function FeedScreen() {
       } else {
         setEchos(prev => {
           const prevArr = Array.isArray(prev) ? prev : [];
-          const newItems = normalized.filter(r => !prevArr.some(p => String(p._id) === String(r._id)));
+          const newItems = normalized.filter(
+            r => !prevArr.some(p => String(p._id) === String(r._id))
+          );
           return [...prevArr, ...newItems];
         });
       }
@@ -60,41 +63,45 @@ export default function FeedScreen() {
   };
 
   useEffect(() => {
-    fetchFeed(1);
+    // wait until token is loaded
+    if (!isLoading && token) {
+      fetchFeed(1);
 
-    const socket = io(BASE_URL, {
-      transports: ['websocket'],
-    });
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
-      console.log('Socket connected', socket.id);
-    });
-
-    socket.on('new_echo_live', (newEcho: Echo) => {
-      const normalized = ensureCreator(newEcho);
-      console.log('New echo live:', normalized._id);
-      setEchos(prev => {
-        const prevArr = Array.isArray(prev) ? prev : [];
-        if (prevArr.some(e => String(e._id) === String(normalized._id))) return prevArr;
-        return [normalized, ...prevArr];
+      const socket = io(BASE_URL, {
+        transports: ['websocket'],
+        auth: { token }, // attach token for protected socket
       });
-    });
+      socketRef.current = socket;
 
-    socket.on('disconnect', () => {
-      console.log('Socket disconnected');
-    });
+      socket.on('connect', () => {
+        console.log('Socket connected', socket.id);
+      });
 
-    socket.on('connect_error', (err: any) => {
-      console.warn('Socket connect_error', err);
-    });
+      socket.on('new_echo_live', (newEcho: Echo) => {
+        const normalized = ensureCreator(newEcho);
+        console.log('New echo live:', normalized._id);
+        setEchos(prev => {
+          const prevArr = Array.isArray(prev) ? prev : [];
+          if (prevArr.some(e => String(e._id) === String(normalized._id))) return prevArr;
+          return [normalized, ...prevArr];
+        });
+      });
 
-    return () => {
-      socket.off('new_echo_live');
-      socket.disconnect();
-      socketRef.current = null;
-    };
-  }, []);
+      socket.on('disconnect', () => {
+        console.log('Socket disconnected');
+      });
+
+      socket.on('connect_error', (err: any) => {
+        console.warn('Socket connect_error', err);
+      });
+
+      return () => {
+        socket.off('new_echo_live');
+        socket.disconnect();
+        socketRef.current = null;
+      };
+    }
+  }, [token, isLoading]); 
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -105,17 +112,18 @@ export default function FeedScreen() {
     fetchFeed(pageRef.current + 1);
   };
 
-  // Handlers passed to EchoItem
   const handleDeleteLocal = (id: string) => {
     setEchos(prev => prev.filter(e => String(e._id) !== String(id)));
   };
 
   const handleUpdateLocal = (updated: Echo) => {
     const normalized = ensureCreator(updated);
-    setEchos(prev => prev.map(e => (String(e._id) === String(normalized._id) ? normalized : e)));
+    setEchos(prev =>
+      prev.map(e => (String(e._id) === String(normalized._id) ? normalized : e))
+    );
   };
 
-  if (loading) {
+  if (loading || isLoading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#FFD60A" />
@@ -126,8 +134,8 @@ export default function FeedScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Hii👋, Fork's</Text>
-        <Text style={styles.subtitle}>Become a Zaam</Text>
+        <Text style={styles.title}>Hi 👋, Fork's</Text>
+        <Text style={styles.subtitle}>Become a cheq-Mater</Text>
       </View>
 
       <FlatList
