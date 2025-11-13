@@ -1,5 +1,5 @@
 // src/screens/Main/CreatePostScreen.tsx
-import { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   Switch,
   KeyboardAvoidingView,
   Platform,
+  Animated,
+  Easing,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -26,8 +28,58 @@ export default function CreatePostScreen() {
   const navigation = useNavigation<CreatePostScreenNavigationProp>();
   const [caption, setCaption] = useState('');
   const [isPublic, setIsPublic] = useState(true);
-  const [goLiveLater, setGoLiveLater] = useState(true); 
+  const [goLiveLater, setGoLiveLater] = useState(true);
   const [loading, setLoading] = useState(false);
+
+  // --- Animated loader values ---
+  const bounce1 = useRef(new Animated.Value(0)).current;
+  const bounce2 = useRef(new Animated.Value(0)).current;
+  const bounce3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let anim1: Animated.CompositeAnimation | null = null;
+    let anim2: Animated.CompositeAnimation | null = null;
+    let anim3: Animated.CompositeAnimation | null = null;
+
+    if (loading) {
+      const createBounce = (animatedValue: Animated.Value, delay: number) =>
+        Animated.loop(
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.timing(animatedValue, {
+              toValue: -8,
+              duration: 300,
+              easing: Easing.inOut(Easing.quad),
+              useNativeDriver: true,
+            }),
+            Animated.timing(animatedValue, {
+              toValue: 0,
+              duration: 300,
+              easing: Easing.inOut(Easing.quad),
+              useNativeDriver: true,
+            }),
+          ])
+        );
+
+      anim1 = createBounce(bounce1, 0);
+      anim2 = createBounce(bounce2, 120);
+      anim3 = createBounce(bounce3, 240);
+
+      anim1.start();
+      anim2.start();
+      anim3.start();
+    }
+
+    return () => {
+      anim1?.stop();
+      anim2?.stop();
+      anim3?.stop();
+      // reset values
+      bounce1.setValue(0);
+      bounce2.setValue(0);
+      bounce3.setValue(0);
+    };
+  }, [loading, bounce1, bounce2, bounce3]);
 
   const handlePost = async () => {
     const { audioUri } = route.params;
@@ -44,7 +96,6 @@ export default function CreatePostScreen() {
 
       formData.append('isPublic', isPublic ? 'true' : 'false');
       formData.append('caption', caption);
-
       formData.append('goLiveLater', goLiveLater ? 'true' : 'false');
 
       await echoApi.createEcho(formData);
@@ -60,6 +111,15 @@ export default function CreatePostScreen() {
       setLoading(false);
     }
   };
+
+  // Loader UI (3 yellow bouncing dots)
+  const Loader = () => (
+    <View style={styles.loaderContainer}>
+      <Animated.View style={[styles.dot, { transform: [{ translateY: bounce1 }] }]} />
+      <Animated.View style={[styles.dot, { transform: [{ translateY: bounce2 }] }]} />
+      <Animated.View style={[styles.dot, { transform: [{ translateY: bounce3 }] }]} />
+    </View>
+  );
 
   return (
     <KeyboardAvoidingView
@@ -123,12 +183,12 @@ export default function CreatePostScreen() {
         </View>
 
         <TouchableOpacity
-          style={styles.button}
+          style={[styles.button, loading && styles.buttonDisabled]}
           onPress={handlePost}
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#000" />
+            <Loader />
           ) : (
             <Text style={styles.buttonText}>Post Echo</Text>
           )}
@@ -204,9 +264,28 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.9,
   },
   buttonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+
+  /* --- Loader styles --- */
+  loaderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    height: 28,
+  },
+  dot: {
+    width: 9,
+    height: 9,
+    borderRadius: 9 / 2,
+    backgroundColor: 'white',
+    marginHorizontal: 6,
   },
 });

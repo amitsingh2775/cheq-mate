@@ -5,13 +5,11 @@ import { v4 as uuidv4 } from 'uuid';
 import Echo, { IEcho } from '../models/echo.model.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { io } from '../server.js';
+import cloudinary from '../config/cloudnairyConfig.js';
+import {compressAudio} from "../utils/compressAudio.js"
 
-// Ensure the upload directory exists
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'audio');
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-  console.log(`Created upload directory: ${UPLOAD_DIR}`);
-}
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 export const createEcho = async (req: AuthenticatedRequest, res: Response) => {
   const { isPublic, caption, goLiveLater } = req.body;
@@ -22,26 +20,33 @@ export const createEcho = async (req: AuthenticatedRequest, res: Response) => {
     return res.status(400).json({ error: 'Audio file is required.' });
   }
 
-  let filePath: string | undefined;
+  let localFilePath: string | undefined;
+  let compressedPath: string | undefined;
 
   try {
-    const fileExtension = path.extname(audioFile.originalname) || '.m4a';
-    const uniqueFilename = `${uuidv4()}${fileExtension}`;
-    filePath = path.join(UPLOAD_DIR, uniqueFilename);
-    const fileRelativePath = `/uploads/audio/${uniqueFilename}`;
+    const ext = path.extname(audioFile.originalname) || '.m4a';
+    const filename = `${uuidv4()}${ext}`;
+    localFilePath = path.join(UPLOAD_DIR, filename);
+    await fs.promises.writeFile(localFilePath, audioFile.buffer);
 
-    await fs.promises.writeFile(filePath, audioFile.buffer);
+    //  Compress the audio
+    compressedPath = path.join(UPLOAD_DIR, `compressed-${filename}.mp3`);
+    await compressAudio(localFilePath, compressedPath);
+
+    //  Upload to Cloudinary
+    const cloudinaryRes = await cloudinary.uploader.upload(compressedPath, {
+      resource_type: 'video', // for audio files Cloudinary uses 'video' type
+      folder: 'echos/audio',
+    });
 
     const now = new Date();
     const goLiveAt =
-      goLiveLater === 'true'
-        ? new Date(now.getTime() + 24 * 60 * 60 * 1000)
-        : now;
+      goLiveLater === 'true' ? new Date(now.getTime() + 24 * 60 * 60 * 1000) : now;
     const status = goLiveLater === 'true' ? 'pending' : 'live';
 
     const newEcho = new Echo({
       creator: userId,
-      audioUrl: fileRelativePath,
+      audioUrl: cloudinaryRes.secure_url, //  store cloudinary link
       caption: caption || null,
       isPublic: isPublic === 'true' || isPublic === true,
       status,
@@ -54,22 +59,28 @@ export const createEcho = async (req: AuthenticatedRequest, res: Response) => {
       select: 'username uid profilePhotoUrl',
     });
 
-    // Broadcast only if live now
+    //  Broadcast live echos
     if (populatedEcho.status === 'live' && populatedEcho.isPublic) {
       io.emit('new_echo_live', populatedEcho);
       console.log(`Broadcasted new live echo: ${populatedEcho._id}`);
     } else {
-      console.log(
-        `Pending echo created: ${populatedEcho._id} (will go live later)`
-      );
+      console.log(`Pending echo created: ${populatedEcho._id}`);
+    }
+
+    //  Cleanup local files
+    if (localFilePath && fs.existsSync(localFilePath)) {
+      await fs.promises.unlink(localFilePath);
+    }
+    if (compressedPath && fs.existsSync(compressedPath)) {
+      await fs.promises.unlink(compressedPath);
     }
 
     return res.status(201).json(populatedEcho);
   } catch (error: any) {
     console.error('Create Echo Error:', error);
-    if (filePath && fs.existsSync(filePath)) {
-      await fs.promises.unlink(filePath);
-    }
+    // Cleanup if failed
+    if (localFilePath && fs.existsSync(localFilePath)) await fs.promises.unlink(localFilePath);
+    if (compressedPath && fs.existsSync(compressedPath)) await fs.promises.unlink(compressedPath);
     return res.status(500).json({ error: 'Server error creating echo.' });
   }
 };
