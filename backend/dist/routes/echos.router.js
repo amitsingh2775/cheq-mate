@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { createEcho, getFeed, getPendingEchos } from '../controllers/echos.controllers.js';
+import { createEcho, getFeed, getPendingEchos, deleteEcho, updateEchoCaption, getMyEchos } from '../controllers/echos.controllers.js';
 import { checkAuth } from '../middleware/auth.middleware.js';
 const router = Router();
 const upload = multer({
@@ -9,7 +9,10 @@ const upload = multer({
 });
 router.use(checkAuth);
 router.route('/')
-    .post(upload.single('audio'), createEcho); // 'audio' must match FormData key
+    .post(upload.single('audio'), createEcho);
 router.get('/feed', getFeed);
 router.get('/pending', getPendingEchos);
+router.delete('/:echoId', deleteEcho);
+router.patch('/:echoId/caption', updateEchoCaption);
+router.get("/my-echos", checkAuth, getMyEchos);
 export default router;

@@ -23,7 +23,7 @@ const userSchema = new Schema({
     password: {
         type: String,
         required: true,
-        select: false // Automatically hide password on query
+        select: false
     },
     profilePhotoUrl: {
         type: String

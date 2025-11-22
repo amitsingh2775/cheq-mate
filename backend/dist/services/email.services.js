@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
 });
 export const sendEmail = async (to, subject, text) => {
     const mailOptions = {
-        from: `"EchoBox" <${process.env.EMAIL_USER}>`,
+        from: `"Cheq-mate" <${process.env.EMAIL_USER}>`,
         to,
         subject,
         text,

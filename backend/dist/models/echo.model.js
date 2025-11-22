@@ -21,5 +21,13 @@ const echoSchema = new Schema({
         type: Boolean,
         default: true
     },
+    goLiveAt: { type: Date, default: Date.now },
+    cloudPublicId: { type: String },
+    uploadStatus: {
+        type: String,
+        enum: ['pending', 'done', 'failed'],
+        default: 'pending'
+    },
 }, { timestamps: true });
+echoSchema.index({ isPublic: 1, goLiveAt: -1 });
 export default mongoose.model('Echo', echoSchema);

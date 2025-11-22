@@ -4,8 +4,12 @@ export interface IEcho extends Document {
   creator: mongoose.Schema.Types.ObjectId;
   audioUrl: string;
   caption?: string;
+  goLiveAt?: Date;
   status: 'pending' | 'live';
+  cloudPublicId?: string;
   isPublic: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const echoSchema: Schema = new Schema(
@@ -31,7 +35,7 @@ const echoSchema: Schema = new Schema(
       type: Boolean, 
       default: true 
     },
-    goLiveAt: { type: Date, default: Date.now }, 
+    goLiveAt: { type: Date, default: Date.now } , 
     cloudPublicId: { type: String },         
     uploadStatus: {                     
       type: String,
