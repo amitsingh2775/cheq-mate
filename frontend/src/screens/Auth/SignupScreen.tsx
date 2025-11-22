@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -14,6 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { AuthStackParamList } from '../../navigation/AuthStack';
 import { authApi } from '../../api/api';
+import Toast from 'react-native-toast-message';
 
 type SignupScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Signup'>;
 
@@ -25,20 +25,32 @@ export default function SignupScreen() {
 
   const handleSignup = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill all fields');
+      Toast.show({
+        type: 'error',
+        text2: 'Please fill all fields',
+      });
       return;
     }
 
     setLoading(true);
     try {
       await authApi.signup({ email, password });
-      Alert.alert(
-        'Success',
-        'Check your email for OTP',
-        [{ text: 'OK', onPress: () => navigation.navigate('VerifyOtp', { email }) }]
-      );
+
+      Toast.show({
+        type: 'success',
+        text2: 'Check your email for OTP',
+      });
+
+      // Small delay so user can see toast, then navigate
+      setTimeout(() => {
+        navigation.navigate('VerifyOtp', { email });
+      }, 400);
     } catch (error: any) {
-      Alert.alert('Signup Failed', error.response?.data?.error || 'Something went wrong');
+      Toast.show({
+        type: 'error',
+        text1: 'Signup Failed',
+        text2: error?.response?.data?.error || 'Something went wrong',
+      });
     } finally {
       setLoading(false);
     }
@@ -55,7 +67,7 @@ export default function SignupScreen() {
             <Text style={styles.iconText}>🎧</Text>
           </View>
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join EchoBox today</Text>
+          <Text style={styles.subtitle}>Join CheqMate today</Text>
         </View>
 
         <View style={styles.form}>
@@ -77,7 +89,7 @@ export default function SignupScreen() {
           />
 
           <TouchableOpacity
-            style={styles.button}
+            style={[styles.button, loading ? styles.buttonDisabled : null]}
             onPress={handleSignup}
             disabled={loading}
           >
@@ -125,6 +137,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
+  buttonDisabled: { opacity: 0.7 },
   buttonText: { fontSize: 16, fontWeight: '600' },
   link: { textAlign: 'center', color: '#666', marginTop: 8 },
   linkBold: { fontWeight: '600', color: '#000' },

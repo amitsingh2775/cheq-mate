@@ -59,7 +59,8 @@ export default function ResetPasswordScreen() {
         {
           text: 'OK',
           onPress: () => {
-            
+            navigation.navigate("Login");
+
           },
         },
       ]);

@@ -1,11 +1,11 @@
-import { useState } from 'react';
+// src/screens/Auth/LoginScreen.tsx
+import React, { useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -16,6 +16,7 @@ import { AuthStackParamList } from '../../navigation/AuthStack';
 import { authApi } from '../../api/api';
 import { useAuthStore } from '../../store/useAuthStore';
 import { navigateToNested } from '@/navigation/RootNavigation';
+import Toast from 'react-native-toast-message';
 
 type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -26,9 +27,20 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const showToast = (message: string, options?: Partial<{ duration: number; position: number }>) => {
+    Toast.show(message, {
+      duration: options?.duration ?? Toast.durations.LONG,
+      position: options?.position ?? Toast.positions.BOTTOM,
+      shadow: true,
+      animation: true,
+      hideOnPress: true,
+      delay: 0,
+    });
+  };
+
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill all fields');
+      showToast('Please fill all fields');
       return;
     }
 
@@ -37,9 +49,13 @@ export default function LoginScreen() {
       const { data } = await authApi.login({ email, password });
       await setToken(data.token);
       setUser(data.user);
+
+      // show success briefly then navigate
+      showToast('Login successful', { duration: Toast.durations.SHORT });
       navigateToNested('Main', 'Feed');
     } catch (error: any) {
-      Alert.alert('Login Failed', error.response?.data?.error || 'Something went wrong');
+      const errMsg = error?.response?.data?.error || 'Something went wrong';
+      showToast(`Login Failed: ${errMsg}`);
     } finally {
       setLoading(false);
     }
@@ -55,7 +71,7 @@ export default function LoginScreen() {
           <View style={styles.iconContainer}>
             <Text style={styles.iconText}>🎧</Text>
           </View>
-          <Text style={styles.title}>EchoBox</Text>
+          <Text style={styles.title}>CheqMate</Text>
           <Text style={styles.subtitle}>Share your voice with the world</Text>
         </View>
 
@@ -75,6 +91,13 @@ export default function LoginScreen() {
             onChangeText={setPassword}
             secureTextEntry
           />
+
+          <TouchableOpacity
+            style={styles.forgotPassContainer}
+            onPress={() => navigation.navigate('ForgotPassword')}
+          >
+            <Text style={styles.forgotPassText}>Forgot Password?</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.button}
@@ -144,12 +167,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     fontSize: 16,
   },
+  forgotPassContainer: {
+    alignSelf: 'flex-end',
+    marginTop: -8,
+    marginBottom: 8,
+  },
+  forgotPassText: {
+    color: '#666',
+    fontWeight: '600',
+  },
   button: {
     backgroundColor: '#FFD60A',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: 8,
   },
   buttonText: {
     fontSize: 16,

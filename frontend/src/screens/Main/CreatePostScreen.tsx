@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  /* --- Loader styles --- */
+
   loaderContainer: {
     flexDirection: 'row',
     justifyContent: 'center',

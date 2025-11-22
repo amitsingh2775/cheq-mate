@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import RootNavigator from './src/navigation/RootNavigator';
 import { useAuthStore } from './src/store/useAuthStore';
+import Toast from 'react-native-toast-message';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -29,6 +30,8 @@ export default function App() {
     <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
       <RootNavigator />
       <StatusBar style="auto" />
+
+      <Toast />
     </View>
   );
 }

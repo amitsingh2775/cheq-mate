@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -14,6 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { AuthStackParamList } from '../../navigation/AuthStack';
 import { authApi } from '../../api/api';
+import Toast from 'react-native-toast-message';
 
 type NavProp = StackNavigationProp<AuthStackParamList, 'ForgotPassword'>;
 
@@ -24,17 +24,25 @@ export default function ForgotPasswordScreen() {
 
   const handleRequest = async () => {
     if (!email) {
-      Alert.alert('Error', 'Please enter your email');
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Please enter your email' });
       return;
     }
     setLoading(true);
     try {
       await authApi.requestResetPassword({ email });
-      Alert.alert('OTP Sent', `A reset OTP has been sent to ${email}`, [
-        { text: 'OK', onPress: () => navigation.navigate('VerifyResetOtp', { email }) },
-      ]);
+
+      Toast.show({
+        type: 'success',
+        text1: 'OTP Sent',
+        text2: `A reset OTP has been sent to ${email}`,
+        visibilityTime: 2000,
+      });
+
+      // Navigate to VerifyResetOtp screen
+      navigation.navigate('VerifyResetOtp', { email });
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.error || 'Failed to send OTP. Try again later.');
+      const message = err?.response?.data?.error || 'Failed to send OTP. Try again later.';
+      Toast.show({ type: 'error', text1: 'Error', text2: message });
     } finally {
       setLoading(false);
     }

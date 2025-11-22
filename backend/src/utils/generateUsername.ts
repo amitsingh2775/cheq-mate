@@ -1,5 +1,5 @@
 export const generateRandomUsername = (): string => {
-  const adjectives: string[] = ["Batman", "xarvis", "pookie", "xem", "CM", "thief"];
+  const adjectives: string[] = ["Batman", "xarvis", "pookie", "Arc", "CM", "thief"];
   const nouns: string[] = ["Aca", "king", "Loard", "guest", "member"];
 
   const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
