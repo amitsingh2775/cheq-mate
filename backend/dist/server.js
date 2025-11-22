@@ -14,14 +14,10 @@ export const io = new Server(httpServer, {
     }
 });
 io.on('connection', (socket) => {
-    console.log(`Socket Connected: User ${socket.id} connected.`);
-    // You can add more socket event listeners here
-    // e.g., socket.on('joinRoom', (room) => { ... });
     socket.on('disconnect', () => {
-        console.log(`Socket Disconnected: User ${socket.id} disconnected.`);
     });
 });
 // Start the server
 httpServer.listen(port, () => {
-    console.log(` Server is running on http://localhost:${port}`);
+    console.log(` Server is started`);
 });

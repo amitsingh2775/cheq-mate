@@ -10,6 +10,7 @@ export interface IUser extends Document {
   isVerified: boolean;
   otp?: string;
   otpExpires?: Date;
+  createdAt:Date;
 }
 
 const userSchema: Schema = new Schema(
@@ -52,7 +53,7 @@ const userSchema: Schema = new Schema(
       type: Date 
     },
   },
-  { timestamps: true } // Adds createdAt and updatedAt
+  { timestamps: true } 
 );
 
 export default mongoose.model<IUser>('User', userSchema);

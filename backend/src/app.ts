@@ -21,7 +21,6 @@ app.use(express.urlencoded({ extended: true }));
 
 
 const uploadsDirPath = path.join(process.cwd(), 'uploads');
-console.log(`Serving static files from: ${uploadsDirPath}`); // Log the path
 app.use('/uploads', express.static(uploadsDirPath));
 
 

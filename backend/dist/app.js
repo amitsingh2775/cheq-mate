@@ -15,7 +15,6 @@ app.use(helmet({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 const uploadsDirPath = path.join(process.cwd(), 'uploads');
-console.log(`Serving static files from: ${uploadsDirPath}`); // Log the path
 app.use('/uploads', express.static(uploadsDirPath));
 app.use('/api/v1/users', usersRouter);
 app.use('/api/v1/echos', echosRouter);

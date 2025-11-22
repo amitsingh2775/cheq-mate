@@ -17,7 +17,7 @@ const OTP_TTL_SECONDS = 10 * 60;
 export const signup = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
-    console.log("email and password-> ",email,password)
+
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required.' });
@@ -26,14 +26,14 @@ export const signup = async (req: Request, res: Response) => {
     // If a fully registered user exists, block immediately
     const existing = await User.findOne({ email });
     if (existing) {
-      console.log("existing user-> ",existing)
+    
       return res.status(400).json({ error: 'Email already in use.' });
     }
 
 
     // Generate username and hash password immediately (do not store plain password in Redis)
     const username = generateRandomUsername();
-    console.log("username - > ",username)
+ 
     const hashedPassword = await bcrypt.hash(password, 10);
 
 
@@ -44,16 +44,16 @@ export const signup = async (req: Request, res: Response) => {
       lowerCaseAlphabets: false,
       digits: true,
     });
-    console.log("hased password -> ",hashedPassword)
+  
 
-    // Payload saved in redis
+
     const payload = {
       email,
       username,
       password: hashedPassword, 
       otp,
     };
-    console.log("payload is ",payload)
+   
 
     // Save in redis with TTL
     const key = `otp:${email}`;
@@ -63,8 +63,7 @@ export const signup = async (req: Request, res: Response) => {
     try {
       await sendEmail(email, 'Verify your Cheq-mate account', `Your OTP is ${otp}. It is valid for 10 minutes.`);
     } catch (emailErr) {
-      // optional: delete key if email fails (safer) — here we rollback to avoid stale redis entries
-      console.error('Failed to send OTP email:', emailErr);
+     
       await redisClient.del(key);
       return res.status(500).json({ error: 'Failed to send OTP email. Please try again later.' });
     }
@@ -75,7 +74,7 @@ export const signup = async (req: Request, res: Response) => {
       username,
     });
   } catch (error: any) {
-    console.error('Signup Error:', error);
+   
     return res.status(500).json({ error: 'Server error during signup.' });
   }
 };
@@ -146,7 +145,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Verify OTP Error:', error);
+    
     return res.status(500).json({ error: 'Server error during OTP verification.' });
   }
 };
@@ -192,7 +191,7 @@ export const login = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Login Error:', error);
+ 
     res.status(500).json({ error: 'Server error during login.' });
   }
 };
@@ -213,7 +212,7 @@ export const getMyProfile = async (req: AuthenticatedRequest, res: Response) => 
       createdAt: user.createdAt,
     });
   } catch (error: any) {
-    console.error('Get Profile Error:', error);
+    
     res.status(500).json({ error: 'Server error getting profile.' });
   }
 };
@@ -260,7 +259,7 @@ export const getMyProfile = async (req: AuthenticatedRequest, res: Response) => 
     try {
       await sendEmail(email, 'Verify your Cheq-mate account', `Your OTP is ${newOtp}. It is valid for 10 minutes.`);
     } catch (emailErr) {
-      console.error('Failed to send OTP email (resend):', emailErr);
+    
       return res.status(500).json({ error: 'Failed to send OTP email. Please try again later.' });
     }
 
@@ -274,7 +273,7 @@ export const getMyProfile = async (req: AuthenticatedRequest, res: Response) => 
 
     return res.status(200).json({ message: 'OTP resent to email.', email });
   } catch (error: any) {
-    console.error('Resend OTP Error:', error);
+    
     return res.status(500).json({ error: 'Server error during OTP resend.' });
   }
 };
@@ -396,7 +395,7 @@ export const resetPassword = async (req: Request, res: Response) => {
       .status(200)
       .json({ message: 'Password changed successfully.', verified: true });
   } catch (error: any) {
-    console.error('Reset Password Error:', error);
+  
     return res.status(500).json({ error: 'Server error resetting password.' });
   }
 };

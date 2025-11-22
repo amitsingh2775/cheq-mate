@@ -5,15 +5,15 @@ const REDIS_URL = 'rediss://default:AWD5AAIncDJjYTRhODc3Y2NkY2I0NzgwYWVlMDI2OTM0
 const client = createClient({ url: REDIS_URL });
 
 client.on('error', (err) => {
-  console.error('Redis Client Error', err);
+
 });
 
 (async () => {
   try {
     await client.connect();
-    console.log('Redis connected successfully');
+    
   } catch (err) {
-    console.error('Redis connection failed', err);
+   
   }
 })();
 

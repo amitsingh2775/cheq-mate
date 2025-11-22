@@ -65,9 +65,7 @@ export const createEcho = async (req: AuthenticatedRequest, res: Response) => {
     //  Broadcast live echos
     if (populatedEcho.status === 'live' && populatedEcho.isPublic) {
       io.emit('new_echo_live', populatedEcho);
-      console.log(`Broadcasted new live echo: ${populatedEcho._id}`);
-    } else {
-      console.log(`Pending echo created: ${populatedEcho._id}`);
+    
     }
 
     //  Cleanup local files
@@ -80,7 +78,7 @@ export const createEcho = async (req: AuthenticatedRequest, res: Response) => {
 
     return res.status(201).json(populatedEcho);
   } catch (error: any) {
-    console.error('Create Echo Error:', error);
+   
     // Cleanup if failed
     if (localFilePath && fs.existsSync(localFilePath)) await fs.promises.unlink(localFilePath);
     if (compressedPath && fs.existsSync(compressedPath)) await fs.promises.unlink(compressedPath);
@@ -112,7 +110,8 @@ export const getFeed = async (req: AuthenticatedRequest, res: Response) => {
 
     return res.json({ page, limit, results: echos });
   } catch (error: any) {
-    console.error('Get Feed Error:', error);
+   
+    
     return res.status(500).json({ error: 'Server error fetching feed.' });
   }
 };
@@ -152,7 +151,7 @@ export const getPendingEchos = async (req: AuthenticatedRequest, res: Response) 
       total,
     });
   } catch (error) {
-    console.error('Get Pending Echos Error:', error);
+   
     return res.status(500).json({ error: 'Server error while fetching pending echos.' });
   }
 };
@@ -204,14 +203,12 @@ export const triggerGoLive = async (req: AuthenticatedRequest, res: Response) =>
     if (populatedEcho.isPublic) {
       const echoObj = populatedEcho.toObject ? populatedEcho.toObject() : populatedEcho;
       io.emit('new_echo_live', echoObj);
-      console.log(`Broadcasted live echo: ${echoObj._id}`);
-    } else {
-      console.log(`Private echo went live (no public broadcast): ${populatedEcho._id}`);
-    }
+    ;
+    } 
 
     return res.status(200).json({ message: 'Echo is now live.', echo: populatedEcho });
   } catch (error: any) {
-    console.error('Trigger Go Live Error:', error);
+   
     return res.status(500).json({ error: 'Server error triggering echo live status.' });
   }
 };
@@ -240,12 +237,11 @@ export const deleteEcho = async (req: AuthenticatedRequest, res: Response) => {
         const filePath = path.join(UPLOAD_DIR, filename);
         if (fs.existsSync(filePath)) {
           await fs.promises.unlink(filePath);
-          console.log(`Deleted audio file: ${filePath}`);
+         
         }
       }
     } catch (fileErr) {
-      console.error('Error deleting audio file:', fileErr);
-      // proceed with DB deletion anyway
+    
     }
 
     // Delete DB record using model-level API (works regardless of doc methods)
@@ -254,11 +250,11 @@ export const deleteEcho = async (req: AuthenticatedRequest, res: Response) => {
     // notify clients to remove from feed
     const payload = { _id: echoId };
     io.emit('remove_echo', payload);
-    console.log(`Echo deleted and remove_echo emitted: ${echoId}`);
+   
 
     return res.status(200).json({ message: 'Echo deleted' });
   } catch (err: any) {
-    console.error('Delete Echo Error:', err);
+
     return res.status(500).json({ error: 'Server error deleting echo.' });
   }
 };
@@ -287,11 +283,11 @@ export const updateEchoCaption = async (req: AuthenticatedRequest, res: Response
     // Emit update to clients
     const echoObj = populated.toObject ? populated.toObject() : populated;
     io.emit('update_echo', echoObj);
-    console.log(`Echo caption updated and update_echo emitted: ${echoObj._id}`);
+   
 
     return res.status(200).json({ message: 'Caption updated', echo: populated });
   } catch (err: any) {
-    console.error('Update Caption Error:', err);
+    
     return res.status(500).json({ error: 'Server error updating caption.' });
   }
 };
@@ -324,7 +320,7 @@ export const getMyEchos = async (req: AuthenticatedRequest, res: Response) => {
       totalPages: Math.ceil(total / limit),
     });
   } catch (error: any) {
-    console.error('Get My Echos Error:', error);
+  
     return res.status(500).json({ error: 'Server error fetching your echos.' });
   }
 };

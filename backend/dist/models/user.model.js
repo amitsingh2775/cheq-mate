@@ -38,6 +38,5 @@ const userSchema = new Schema({
     otpExpires: {
         type: Date
     },
-}, { timestamps: true } // Adds createdAt and updatedAt
-);
+}, { timestamps: true });
 export default mongoose.model('User', userSchema);
