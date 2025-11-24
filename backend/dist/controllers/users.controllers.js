@@ -37,6 +37,11 @@ export const signup = async (req, res) => {
         // Save in redis with TTL
         const key = `otp:${email}`;
         await redisClient.setEx(key, OTP_TTL_SECONDS, JSON.stringify(payload));
+        res.status(201).json({
+            message: 'OTP sent on your email sortly. Please verify to complete registration.',
+            email,
+            username,
+        });
         // Send OTP email
         try {
             await sendEmail(email, 'Verify your Cheq-mate account', `Your OTP is ${otp}. It is valid for 10 minutes.`);
@@ -45,11 +50,6 @@ export const signup = async (req, res) => {
             await redisClient.del(key);
             return res.status(500).json({ error: 'Failed to send OTP email. Please try again later.' });
         }
-        return res.status(201).json({
-            message: 'OTP sent to email. Please verify to complete registration.',
-            email,
-            username,
-        });
     }
     catch (error) {
         return res.status(500).json({ error: 'Server error during signup.' });
