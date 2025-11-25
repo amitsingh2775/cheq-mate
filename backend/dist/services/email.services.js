@@ -2,17 +2,22 @@ import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 dotenv.config();
 const DEFAULT_TIMEOUT_MS = 10_000;
+const PORT = parseInt(process.env.EMAIL_PORT || '587', 10);
+const SECURE = PORT === 465;
 const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
-    port: parseInt(process.env.EMAIL_PORT || '587', 10),
-    secure: false, // true for 465
+    port: PORT,
+    secure: SECURE,
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
     },
-    connectionTimeout: 5000,
-    greetingTimeout: 5000,
-    socketTimeout: 5000,
+    connectionTimeout: 10_000,
+    greetingTimeout: 5_000,
+    socketTimeout: 10_000,
+    tls: {
+        rejectUnauthorized: process.env.NODE_ENV === 'production' ? true : false,
+    },
 });
 transporter.verify()
     .then(() => console.log('Email transporter verified'))
