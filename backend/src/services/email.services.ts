@@ -1,42 +1,41 @@
 
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import dotenv from 'dotenv';
 dotenv.config();
 
+const RESEND_KEY = process.env.RESEND_API_KEY;
+const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
+
+if (!RESEND_KEY) {
+  throw new Error('RESEND_API_KEY is not set in environment');
+}
+
+const resend = new Resend(RESEND_KEY);
+
+// default timeout for external email call
 const DEFAULT_TIMEOUT_MS = 10_000;
-const PORT = parseInt(process.env.EMAIL_PORT || '587', 10);
-const SECURE = PORT === 465;
 
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: PORT,
-  secure: SECURE,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  connectionTimeout: 10_000,
-  greetingTimeout: 5_000,
-  socketTimeout: 10_000,
-  tls: {
-    rejectUnauthorized: process.env.NODE_ENV === 'production' ? true : false,
-  },
-});
+export const sendEmail = async (
+  to: string,
+  subject: string,
+  text: string,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+  options?: { html?: string }
+): Promise<void> => {
 
-transporter.verify()
-  .then(() => console.log('Email transporter verified'))
-  .catch(err => console.error('Email transporter verify failed:', err?.message || err));
+  const html = options?.html ?? `<p>${text}</p>`;
 
-export const sendEmail = (to: string, subject: string, text: string, timeoutMs = DEFAULT_TIMEOUT_MS) => {
-  const mailOptions = {
-    from: `"Cheq-mate" <${process.env.EMAIL_USER}>`,
+  const call = resend.emails.send({
+    from: FROM_EMAIL,
     to,
     subject,
-    text,
-  };
-  const sendPromise = transporter.sendMail(mailOptions);
+    html,
+  });
+  console.log(call)
+
   const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('sendMail timeout')), timeoutMs)
+    setTimeout(() => reject(new Error('Resend send timeout')), timeoutMs)
   );
-  return Promise.race([sendPromise, timeout]);
+
+  await Promise.race([call, timeout]);
 };
