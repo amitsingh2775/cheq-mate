@@ -3,7 +3,7 @@ import axios, { AxiosResponse } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
-const BASE_URL = 'http://10.237.6.204:8000';
+const BASE_URL = 'https://www.cheqmates.help';
 
 const api = axios.create({
   baseURL: BASE_URL,

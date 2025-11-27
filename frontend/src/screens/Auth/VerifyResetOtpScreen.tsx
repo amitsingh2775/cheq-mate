@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -28,6 +27,10 @@ export default function VerifyResetOtpScreen() {
   const [resendLoading, setResendLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
 
+  // inline messages (replaces Alert)
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
   useEffect(() => {
     if (resendTimer <= 0) return;
     const t = setInterval(() => {
@@ -37,21 +40,25 @@ export default function VerifyResetOtpScreen() {
   }, [resendTimer]);
 
   const handleVerify = async () => {
+    setErrorMessage('');
+    setSuccessMessage('');
+
     if (!otp || otp.length !== 6) {
-      Alert.alert('Error', 'Enter a valid 6-digit OTP');
+      setErrorMessage('Enter a valid 6-digit OTP');
       return;
     }
     setLoading(true);
     try {
       const { data } = await authApi.verifyresetPassOtp({ email: route.params.email, otp });
       if (data.verified) {
-
+        setSuccessMessage('OTP verified — continuing...');
+        // small delay so user sees success message (optional)
         navigation.navigate('ResetPassword', { email: route.params.email, otp });
       } else {
-        Alert.alert('Verification Failed', data.message || 'OTP verification failed');
+        setErrorMessage(data.message || 'OTP verification failed');
       }
     } catch (err: any) {
-      Alert.alert('Verification Failed', err.response?.data?.error || 'Invalid OTP');
+      setErrorMessage(err.response?.data?.error || 'Invalid OTP');
     } finally {
       setLoading(false);
     }
@@ -59,13 +66,15 @@ export default function VerifyResetOtpScreen() {
 
   const handleResend = async () => {
     if (resendTimer > 0 || resendLoading) return;
+    setErrorMessage('');
+    setSuccessMessage('');
     setResendLoading(true);
     try {
       await authApi.requestResetPassword({ email: route.params.email });
       setResendTimer(60);
-      Alert.alert('OTP Sent', `A new OTP has been sent to ${route.params.email}`);
+      setSuccessMessage(`A new OTP has been sent to ${route.params.email}`);
     } catch (err: any) {
-      Alert.alert('Resend Failed', err.response?.data?.error || 'Unable to resend OTP');
+      setErrorMessage(err.response?.data?.error || 'Unable to resend OTP');
     } finally {
       setResendLoading(false);
     }
@@ -92,6 +101,10 @@ export default function VerifyResetOtpScreen() {
           keyboardType="number-pad"
           maxLength={6}
         />
+
+        {/* inline messages */}
+        {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
+        {successMessage ? <Text style={styles.success}>{successMessage}</Text> : null}
 
         <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleVerify} disabled={loading}>
           {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.buttonText}>Verify & Continue</Text>}
@@ -141,4 +154,18 @@ const styles = StyleSheet.create({
   resendButton: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8 },
   resendButtonDisabled: { opacity: 0.6 },
   resendText: { fontSize: 14, color: '#333' },
+
+  /* messages */
+  error: {
+    color: 'red',
+    textAlign: 'center',
+    marginBottom: 8,
+    fontSize: 14,
+  },
+  success: {
+    color: 'green',
+    textAlign: 'center',
+    marginBottom: 8,
+    fontSize: 14,
+  },
 });

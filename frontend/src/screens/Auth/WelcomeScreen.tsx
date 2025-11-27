@@ -11,7 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { ArrowRight, Mic, Users, Zap, Music } from 'lucide-react-native';
-import { AuthStackParamList } from '@/navigation/AuthStack'; // path adjust if needed
+import { AuthStackParamList } from '@/navigation/AuthStack'; 
 
 type AuthNavProp = StackNavigationProp<AuthStackParamList, 'Signup'>;
 

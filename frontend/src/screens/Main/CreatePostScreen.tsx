@@ -1,4 +1,4 @@
-// src/screens/Main/CreatePostScreen.tsx
+
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   Switch,
   KeyboardAvoidingView,
@@ -19,6 +18,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RecordStackParamList } from '../../navigation/MainTabs';
 import { echoApi } from '../../api/api';
 import { ArrowLeft } from 'lucide-react-native';
+import Toast from 'react-native-toast-message';
 
 type CreatePostScreenRouteProp = RouteProp<RecordStackParamList, 'CreatePost'>;
 type CreatePostScreenNavigationProp = StackNavigationProp<RecordStackParamList, 'CreatePost'>;
@@ -100,13 +100,22 @@ export default function CreatePostScreen() {
 
       await echoApi.createEcho(formData);
 
-      Alert.alert(
-        'Success',
-        goLiveLater ? 'Your echo is scheduled and will go live after 24 hours.' : 'Your echo is live now!',
-        [{ text: 'OK', onPress: () => navigation.navigate('RecordMain') }]
-      );
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: goLiveLater ? 'Your echo is scheduled and will go live after 24 hours.' : 'Your echo is live now!',
+        visibilityTime: 2000,
+      });
+
+      // navigate back to RecordMain (same behaviour as before)
+      navigation.navigate('RecordMain');
     } catch (error: any) {
-      Alert.alert('Upload Failed', error.response?.data?.error || 'Something went wrong');
+      Toast.show({
+        type: 'error',
+        text1: 'Upload Failed',
+        text2: error?.response?.data?.error || 'Something went wrong',
+        visibilityTime: 3000,
+      });
     } finally {
       setLoading(false);
     }
@@ -273,7 +282,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-
 
   loaderContainer: {
     flexDirection: 'row',

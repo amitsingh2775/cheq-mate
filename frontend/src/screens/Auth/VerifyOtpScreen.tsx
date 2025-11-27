@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -20,14 +19,15 @@ type VerifyOtpScreenRouteProp = RouteProp<AuthStackParamList, 'VerifyOtp'>;
 export default function VerifyOtpScreen() {
   const route = useRoute<VerifyOtpScreenRouteProp>();
   const { setToken, setUser } = useAuthStore();
+
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
-
-
   const [resendLoading, setResendLoading] = useState(false);
-  const [resendTimer, setResendTimer] = useState(0); 
+  const [resendTimer, setResendTimer] = useState(0);
 
-  
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
   useEffect(() => {
     if (resendTimer <= 0) return;
     const t = setInterval(() => {
@@ -43,52 +43,65 @@ export default function VerifyOtpScreen() {
   }, [resendTimer]);
 
   const handleVerify = async () => {
+    setErrorMessage("");
+    setSuccessMessage("");
+
     if (!otp || otp.length !== 6) {
-      Alert.alert('Error', 'Please enter a valid 6-digit OTP');
+      setErrorMessage("Please enter a valid 6-digit OTP");
       return;
     }
 
     setLoading(true);
     try {
-      const { data } = await authApi.verifyOtp({ email: route.params.email, otp });
+      const { data } = await authApi.verifyOtp({
+        email: route.params.email,
+        otp,
+      });
+
       await setToken(data.token);
       setUser(data.user);
-     
+
+      setSuccessMessage("OTP Verified Successfully!");
     } catch (error: any) {
-      Alert.alert('Verification Failed', error.response?.data?.error || 'Invalid OTP');
+      setErrorMessage(error.response?.data?.error || "Invalid OTP");
     } finally {
       setLoading(false);
     }
   };
 
   const handleResend = async () => {
-   
     if (resendTimer > 0 || resendLoading) return;
 
+    setErrorMessage("");
+    setSuccessMessage("");
+
     setResendLoading(true);
+
     try {
       await authApi.resendOtp({ email: route.params.email });
-   
+
       setResendTimer(60);
-      Alert.alert('OTP Sent', `A new OTP has been sent to ${route.params.email}`);
+      setSuccessMessage(`New OTP sent to ${route.params.email}`);
     } catch (error: any) {
-      Alert.alert('Resend Failed', error.response?.data?.error || 'Unable to resend OTP. Try again later.');
+      setErrorMessage(
+        error.response?.data?.error ||
+          "Unable to resend OTP. Try again later."
+      );
     } finally {
       setResendLoading(false);
     }
   };
 
- 
   const formatTimer = (s: number) => {
     const mm = Math.floor(s / 60);
     const ss = s % 60;
-    if (mm > 0) return `${mm}:${ss < 10 ? '0' : ''}${ss}`;
+    if (mm > 0) return `${mm}:${ss < 10 ? "0" : ""}${ss}`;
     return `${ss}s`;
   };
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={styles.container}
     >
       <View style={styles.content}>
@@ -98,7 +111,7 @@ export default function VerifyOtpScreen() {
           </View>
           <Text style={styles.title}>Verify Email</Text>
           <Text style={styles.subtitle}>
-            Enter the 6-digit code sent to{'\n'}
+            Enter the 6-digit code sent to{"\n"}
             {route.params.email}
           </Text>
         </View>
@@ -113,6 +126,16 @@ export default function VerifyOtpScreen() {
             maxLength={6}
           />
 
+          {/* Error / Success Messages */}
+          {errorMessage ? (
+            <Text style={styles.error}>{errorMessage}</Text>
+          ) : null}
+
+          {successMessage ? (
+            <Text style={styles.success}>{successMessage}</Text>
+          ) : null}
+
+          {/* Verify Button */}
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleVerify}
@@ -125,18 +148,29 @@ export default function VerifyOtpScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Resend section */}
-          <View style={{ alignItems: 'center', marginTop: 8 }}>
+          {/* Resend OTP */}
+          <View style={{ alignItems: "center", marginTop: 8 }}>
             <TouchableOpacity
-              style={[styles.resendButton, (resendTimer > 0 || resendLoading) && styles.resendButtonDisabled]}
+              style={[
+                styles.resendButton,
+                (resendTimer > 0 || resendLoading) &&
+                  styles.resendButtonDisabled,
+              ]}
               onPress={handleResend}
               disabled={resendTimer > 0 || resendLoading}
             >
               {resendLoading ? (
                 <ActivityIndicator />
               ) : (
-                <Text style={[styles.resendText, (resendTimer > 0 || resendLoading) && { opacity: 0.6 }]}>
-                  {resendTimer > 0 ? `Resend OTP (${formatTimer(resendTimer)})` : 'Resend OTP'}
+                <Text
+                  style={[
+                    styles.resendText,
+                    (resendTimer > 0 || resendLoading) && { opacity: 0.6 },
+                  ]}
+                >
+                  {resendTimer > 0
+                    ? `Resend OTP (${formatTimer(resendTimer)})`
+                    : "Resend OTP"}
                 </Text>
               )}
             </TouchableOpacity>
@@ -148,77 +182,55 @@ export default function VerifyOtpScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 48,
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
+  content: { flex: 1, justifyContent: "center", paddingHorizontal: 24 },
+  header: { alignItems: "center", marginBottom: 48 },
   iconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#FFD60A',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#FFD60A",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 16,
   },
-  iconText: {
-    fontSize: 40,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-  },
-  form: {
-    gap: 16,
-  },
+  iconText: { fontSize: 40 },
+  title: { fontSize: 32, fontWeight: "bold", marginBottom: 8 },
+  subtitle: { fontSize: 16, color: "#666", textAlign: "center" },
+  form: { gap: 16 },
   input: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 12,
     fontSize: 24,
-    textAlign: 'center',
+    textAlign: "center",
     letterSpacing: 8,
   },
   button: {
-    backgroundColor: '#FFD60A',
+    backgroundColor: "#FFD60A",
     paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 8,
   },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  resendButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  resendButtonDisabled: {
-    opacity: 0.6,
-  },
-  resendText: {
+  buttonDisabled: { opacity: 0.7 },
+  buttonText: { fontSize: 16, fontWeight: "600" },
+  error: {
+    color: "red",
+    textAlign: "center",
+    marginBottom: -8,
+    marginTop: -8,
     fontSize: 14,
-    color: '#333',
   },
+  success: {
+    color: "green",
+    textAlign: "center",
+    marginBottom: -8,
+    marginTop: -8,
+    fontSize: 14,
+  },
+  resendButton: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8 },
+  resendButtonDisabled: { opacity: 0.6 },
+  resendText: { fontSize: 14, color: "#333" },
 });

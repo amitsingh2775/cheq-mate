@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
+// src/screens/Main/RecordScreen.tsx
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RecordStackParamList } from '../../navigation/MainTabs';
 import { Audio } from 'expo-av';
 import { Mic, Square, Play, Pause, RotateCcw, ArrowRight } from 'lucide-react-native';
+import Toast from 'react-native-toast-message';
 
 type RecordScreenNavigationProp = StackNavigationProp<RecordStackParamList, 'RecordMain'>;
 
@@ -21,22 +22,30 @@ export default function RecordScreen() {
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
+  const intervalRef = useRef<any>(null);
 
   useEffect(() => {
     (async () => {
-      await Audio.requestPermissionsAsync();
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
+      try {
+        await Audio.requestPermissionsAsync();
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        });
+      } catch (err) {
+        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to get audio permissions', visibilityTime: 3000 });
+      }
     })();
 
     return () => {
       if (sound) {
         sound.unloadAsync();
       }
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
     };
-  }, []);
+  }, []); // eslint-disable-line
 
   const startRecording = async () => {
     try {
@@ -46,17 +55,17 @@ export default function RecordScreen() {
       setRecording(newRecording);
       setDuration(0);
 
-      const interval = setInterval(() => {
+      intervalRef.current = setInterval(() => {
         setDuration((prev) => prev + 1);
       }, 1000);
 
       newRecording.setOnRecordingStatusUpdate((status) => {
         if (!status.isRecording) {
-          clearInterval(interval);
+          if (intervalRef.current) clearInterval(intervalRef.current);
         }
       });
     } catch (error) {
-      Alert.alert('Error', 'Failed to start recording');
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to start recording', visibilityTime: 3000 });
     }
   };
 
@@ -67,9 +76,10 @@ export default function RecordScreen() {
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
       setRecording(null);
-      setRecordedUri(uri);
+      setRecordedUri(uri ?? null);
+      if (intervalRef.current) clearInterval(intervalRef.current);
     } catch (error) {
-      Alert.alert('Error', 'Failed to stop recording');
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to stop recording', visibilityTime: 3000 });
     }
   };
 
@@ -98,14 +108,18 @@ export default function RecordScreen() {
         });
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to play recording');
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to play recording', visibilityTime: 3000 });
     }
   };
 
   const resetRecording = async () => {
-    if (sound) {
-      await sound.unloadAsync();
-      setSound(null);
+    try {
+      if (sound) {
+        await sound.unloadAsync();
+        setSound(null);
+      }
+    } catch (_e) {
+      // ignore unload errors
     }
     setRecordedUri(null);
     setIsPlaying(false);
@@ -114,7 +128,7 @@ export default function RecordScreen() {
 
   const handleNext = () => {
     if (!recordedUri) {
-      Alert.alert('Error', 'Please record audio first');
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Please record audio first', visibilityTime: 2500 });
       return;
     }
     navigation.navigate('CreatePost', { audioUri: recordedUri });

@@ -27,20 +27,26 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const showToast = (message: string, options?: Partial<{ duration: number; position: number }>) => {
-    Toast.show(message, {
-      duration: options?.duration ?? Toast.durations.LONG,
-      position: options?.position ?? Toast.positions.BOTTOM,
-      shadow: true,
-      animation: true,
-      hideOnPress: true,
-      delay: 0,
+  
+  const showToast = (
+    message: string,
+    options?: Partial<{ type: 'success' | 'error' | 'info'; duration: number; position: 'top' | 'bottom'; text2: string }>
+  ) => {
+    Toast.show({
+      type: options?.type ?? 'info',
+      text1: message,
+      text2: options?.text2,
+      visibilityTime: options?.duration ?? 4000,
+      position: options?.position ?? 'bottom',
+      autoHide: true,
+      topOffset: 50,
+      bottomOffset: 40,
     });
   };
 
   const handleLogin = async () => {
     if (!email || !password) {
-      showToast('Please fill all fields');
+      showToast('Please fill all fields', { type: 'error', duration: 3000 });
       return;
     }
 
@@ -50,12 +56,13 @@ export default function LoginScreen() {
       await setToken(data.token);
       setUser(data.user);
 
-      // show success briefly then navigate
-      showToast('Login successful', { duration: Toast.durations.SHORT });
+      
+      showToast('Login successful', { type: 'success', duration: 1500 });
+      
       navigateToNested('Main', 'Feed');
     } catch (error: any) {
       const errMsg = error?.response?.data?.error || 'Something went wrong';
-      showToast(`Login Failed: ${errMsg}`);
+      showToast(`Login Failed: ${errMsg}`, { type: 'error', duration: 4000 });
     } finally {
       setLoading(false);
     }
@@ -100,7 +107,7 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.button}
+            style={[styles.button, loading && { opacity: 0.7 }]}
             onPress={handleLogin}
             disabled={loading}
           >
